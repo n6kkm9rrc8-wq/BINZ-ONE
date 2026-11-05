@@ -22,7 +22,6 @@ button:active{transform:scale(.98);background:#1b3854}
 #panel h2{font-size:18px;margin:0 0 6px;color:var(--gold)}#panel p{font-size:13px;line-height:1.5;color:#c4d2e0;margin:6px 0 12px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}
 #toast{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);background:#24364a;padding:9px 13px;border-radius:20px;font-size:11px;display:none}
-@media(min-width:700px){.bottom{max-width:600px;margin:auto}.hint{top:86px}#panel{left:auto;right:20px;width:330px;bottom:80px}}
 </style>
 </head>
 <body>
@@ -47,89 +46,188 @@ button:active{transform:scale(.98);background:#1b3854}
  <button id="aboutBtn">ⓘ Hướng dẫn</button>
 </div>
 <div id="toast"></div>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-const mount=document.getElementById('scene');
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x081321);
-scene.fog=new THREE.Fog(0x081321,18,36);
-const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,100);
-camera.position.set(10,11,14);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.outputColorSpace=THREE.SRGBColorSpace; mount.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true; controls.dampingFactor=.07; controls.maxPolarAngle=Math.PI*.48;
-controls.minDistance=7; controls.maxDistance=25; controls.target.set(0,0,0);
-scene.add(new THREE.HemisphereLight(0x9dbce0,0x152235,2));
-const key=new THREE.DirectionalLight(0xffe4b0,3); key.position.set(7,12,8); key.castShadow=true; scene.add(key);
-const fill=new THREE.PointLight(0x3d91d8,30,25); fill.position.set(-7,6,-5); scene.add(fill);
-const floorMat=new THREE.MeshStandardMaterial({color:0x17283b,roughness:.8});
-const floor=new THREE.Mesh(new THREE.BoxGeometry(13,.35,9),floorMat); floor.position.y=-.3; floor.receiveShadow=true; scene.add(floor);
-const grid=new THREE.GridHelper(13,26,0x36516c,0x24394e); grid.position.y=-.115; scene.add(grid);
-const roomDefs=[
- {id:'hq',name:'HEADQUARTERS',vn:'Phòng điều hành',x:0,z:0,w:3.7,d:2.8,color:0xd8b75f,desc:'Trung tâm chỉ huy BINZ ONE. Điều phối công việc, theo dõi trạng thái các phòng và nhận báo cáo từ các AI Agent.',tasks:['Tổng hợp báo cáo các phòng','Kiểm tra tiến độ công việc','Phân công nhiệm vụ cho Agent']},
- {id:'finance',name:'FINANCE',vn:'Phòng tài chính',x:-4.3,z:-2.65,w:3.6,d:2.7,color:0x53b9ad,desc:'Theo dõi dòng tiền, doanh thu, chi phí, công nợ và phân tích danh mục đầu tư. Bản demo không kết nối tài khoản hay đặt lệnh.',tasks:['Lập báo cáo thu chi tháng','Theo dõi công nợ và lịch trả nợ','Phân tích mã cổ phiếu theo dữ liệu được cung cấp']},
- {id:'business',name:'BUSINESS',vn:'Phòng kinh doanh',x:4.3,z:-2.65,w:3.6,d:2.7,color:0x6e9ee8,desc:'Quản lý hoạt động Tiệm tóc Binz: doanh thu, lịch dịch vụ, menu, marketing và chăm sóc khách hàng.',tasks:['Tổng kết doanh thu hôm nay','Đề xuất chương trình combo','Soạn nội dung quảng bá tiệm tóc']},
- {id:'dev',name:'DEVELOPER',vn:'Phòng lập trình',x:-4.3,z:2.65,w:3.6,d:2.7,color:0xb58be8,desc:'Phát triển ứng dụng BINZ ONE, quản lý mã nguồn, kiểm thử, sửa lỗi và cải tiến trải nghiệm iPhone.',tasks:['Kiểm tra lỗi giao diện iPhone','Đề xuất nâng cấp phiên bản','Lập kế hoạch sao lưu dữ liệu']},
- {id:'research',name:'RESEARCH',vn:'Phòng nghiên cứu',x:4.3,z:2.65,w:3.6,d:2.7,color:0xe28b70,desc:'Nghiên cứu công nghệ, tổng hợp tài liệu và đề xuất cải tiến cho toàn hệ thống.',tasks:['Nghiên cứu một công nghệ mới','Tóm tắt tài liệu được cung cấp','Đề xuất cải tiến BINZ ONE']}
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const mount = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x081321);
+scene.fog = new THREE.Fog(0x081321, 18, 36);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(10, 11, 14);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+mount.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 7;
+controls.maxDistance = 25;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.HemisphereLight(0x9dbce0, 0x152235, 2));
+const key = new THREE.DirectionalLight(0xffe4b0, 3);
+key.position.set(7, 12, 8);
+key.castShadow = true;
+scene.add(key);
+const fill = new THREE.PointLight(0x3d91d8, 30, 25);
+fill.position.set(-7, 6, -5);
+scene.add(fill);
+
+const floor = new THREE.Mesh(
+  new THREE.BoxGeometry(13, 0.35, 9),
+  new THREE.MeshStandardMaterial({ color: 0x17283b, roughness: 0.8 })
+);
+floor.position.y = -0.3;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(13, 26, 0x36516c, 0x24394e);
+grid.position.y = -0.115;
+scene.add(grid);
+
+const roomDefs = [
+  {id:'hq', name:'HEADQUARTERS', vn:'Phòng điều hành', x:0, z:0, w:3.7, d:2.8, color:0xd8b75f, desc:'Trung tâm chỉ huy BINZ ONE. Điều phối công việc, theo dõi trạng thái các phòng và nhận báo cáo từ các AI Agent.', tasks:['Tổng hợp báo cáo các phòng','Kiểm tra tiến độ công việc','Phân công nhiệm vụ cho Agent']},
+  {id:'finance', name:'FINANCE', vn:'Phòng tài chính', x:-4.3, z:-2.65, w:3.6, d:2.7, color:0x53b9ad, desc:'Theo dõi dòng tiền, doanh thu, chi phí, công nợ và phân tích danh mục đầu tư.', tasks:['Lập báo cáo thu chi tháng','Theo dõi công nợ và lịch trả nợ','Phân tích mã cổ phiếu']},
+  {id:'business', name:'BUSINESS', vn:'Phòng kinh doanh', x:4.3, z:-2.65, w:3.6, d:2.7, color:0x6e9ee8, desc:'Quản lý hoạt động Tiệm tóc Binz: doanh thu, lịch dịch vụ, menu, marketing.', tasks:['Tổng kết doanh thu hôm nay','Đề xuất chương trình combo','Soạn nội dung quảng bá']},
+  {id:'dev', name:'DEVELOPER', vn:'Phòng lập trình', x:-4.3, z:2.65, w:3.6, d:2.7, color:0xb58be8, desc:'Phát triển ứng dụng BINZ ONE, quản lý mã nguồn, kiểm thử, sửa lỗi.', tasks:['Kiểm tra lỗi giao diện iPhone','Đề xuất nâng cấp phiên bản','Lập kế hoạch sao lưu']},
+  {id:'research', name:'RESEARCH', vn:'Phòng nghiên cứu', x:4.3, z:2.65, w:3.6, d:2.7, color:0xe28b70, desc:'Nghiên cứu công nghệ, tổng hợp tài liệu và đề xuất cải tiến.', tasks:['Nghiên cứu một công nghệ mới','Tóm tắt tài liệu','Đề xuất cải tiến BINZ ONE']}
 ];
-const clickable=[]; const labels=[];
-function makeLabel(text,color){
- const c=document.createElement('canvas'); c.width=512;c.height=128;
- const ctx=c.getContext('2d');ctx.fillStyle='#0b1b2b';ctx.strokeStyle='#'+color.toString(16).padStart(6,'0');ctx.lineWidth=5;
- ctx.roundRect(8,8,496,112,22);ctx.fill();ctx.stroke();
- ctx.fillStyle='#f4f7fb';ctx.font='bold 38px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,65);
- const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
- const m=new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide});
- const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.5,.62),m);return mesh;
-}
-function addRoom(r){
- const group=new THREE.Group();group.position.set(r.x,0,r.z);scene.add(group);
- const mat=new THREE.MeshStandardMaterial({color:r.color,metalness:.25,roughness:.4,emissive:r.color,emissiveIntensity:.08});
- const base=new THREE.Mesh(new THREE.BoxGeometry(r.w,.13,r.d),new THREE.MeshStandardMaterial({color:0x20364b,metalness:.3,roughness:.6}));
- base.position.y=-.06;base.receiveShadow=true;group.add(base);
- const wallMat=new THREE.MeshStandardMaterial({color:0x34516a,transparent:true,opacity:.68,metalness:.25,roughness:.3});
- const h=1.45,t=.10;
- const walls=[
-  [r.w,h,t,0,h/2,-r.d/2],[r.w,h,t,0,h/2,r.d/2],
-  [t,h,r.d,-r.w/2,h/2,0],[t,h,r.d,r.w/2,h/2,0]
- ];
- walls.forEach(a=>{const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),wallMat);m.position.set(a[3],a[4],a[5]);m.castShadow=true;group.add(m);clickable.push(m);m.userData.room=r;});
- const top=new THREE.Mesh(new THREE.BoxGeometry(r.w,.09,r.d),new THREE.MeshStandardMaterial({color:r.color,emissive:r.color,emissiveIntensity:.28,metalness:.4,roughness:.3}));
- top.position.y=h;group.add(top);clickable.push(top);top.userData.room=r;
- const desk=new THREE.Mesh(new THREE.BoxGeometry(.95,.12,.48),new THREE.MeshStandardMaterial({color:0x9c7548,roughness:.55}));desk.position.set(0,.55,0);group.add(desk);
- const screen=new THREE.Mesh(new THREE.BoxGeometry(.58,.38,.06),new THREE.MeshStandardMaterial({color:0x112b42,emissive:0x1b75a5,emissiveIntensity:.8,metalness:.4}));screen.position.set(0,.83,-.12);group.add(screen);
- const label=makeLabel(r.name,r.color);label.position.set(r.x,2.35,r.z);scene.add(label);labels.push(label);
- const light=new THREE.PointLight(r.color,5,5);light.position.set(r.x,1.6,r.z);scene.add(light);
+
+const clickable = [];
+function addRoom(r) {
+  const group = new THREE.Group();
+  group.position.set(r.x, 0, r.z);
+  scene.add(group);
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(r.w, 0.13, r.d),
+    new THREE.MeshStandardMaterial({ color: 0x20364b, metalness: 0.3, roughness: 0.6 })
+  );
+  base.position.y = -0.06;
+  group.add(base);
+
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x34516a, transparent: true, opacity: 0.68 });
+  const h = 1.45, t = 0.10;
+  const walls = [
+    [r.w, h, t, 0, h/2, -r.d/2],
+    [r.w, h, t, 0, h/2, r.d/2],
+    [t, h, r.d, -r.w/2, h/2, 0],
+    [t, h, r.d, r.w/2, h/2, 0]
+  ];
+  walls.forEach(a => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(a[0], a[1], a[2]), wallMat);
+    m.position.set(a[3], a[4], a[5]);
+    group.add(m);
+    clickable.push(m);
+    m.userData.room = r;
+  });
+
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(r.w, 0.09, r.d),
+    new THREE.MeshStandardMaterial({ color: r.color, emissive: r.color, emissiveIntensity: 0.28 })
+  );
+  top.position.y = h;
+  group.add(top);
+  clickable.push(top);
+  top.userData.room = r;
+
+  const desk = new THREE.Mesh(
+    new THREE.BoxGeometry(0.95, 0.12, 0.48),
+    new THREE.MeshStandardMaterial({ color: 0x9c7548, roughness: 0.55 })
+  );
+  desk.position.set(0, 0.55, 0);
+  group.add(desk);
+
+  const screen = new THREE.Mesh(
+    new THREE.BoxGeometry(0.58, 0.38, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x112b42, emissive: 0x1b75a5, emissiveIntensity: 0.8 })
+  );
+  screen.position.set(0, 0.83, -0.12);
+  group.add(screen);
+
+  const light = new THREE.PointLight(r.color, 5, 5);
+  light.position.set(r.x, 1.6, r.z);
+  scene.add(light);
 }
 roomDefs.forEach(addRoom);
-const centerRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.035,8,80),new THREE.MeshBasicMaterial({color:0xe8c878}));
-centerRing.rotation.x=Math.PI/2;centerRing.position.y=.02;scene.add(centerRing);
-const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-let selected=null,auto=false;
-function showRoom(r){
- selected=r;document.getElementById('roomTitle').textContent=r.vn;
- document.getElementById('roomDesc').textContent=r.desc;
- document.getElementById('taskResult').textContent='AI Agent đề xuất: '+r.tasks[0]+'.';
- document.getElementById('panel').style.display='block';
- controls.target.set(r.x,0,r.z);
+
+const centerRing = new THREE.Mesh(
+  new THREE.TorusGeometry(1.35, 0.035, 8, 80),
+  new THREE.MeshBasicMaterial({ color: 0xe8c878 })
+);
+centerRing.rotation.x = Math.PI / 2;
+centerRing.position.y = 0.02;
+scene.add(centerRing);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let selected = null, auto = false;
+
+function showRoom(r) {
+  selected = r;
+  document.getElementById('roomTitle').textContent = r.vn;
+  document.getElementById('roomDesc').textContent = r.desc;
+  document.getElementById('taskResult').textContent = 'AI Agent đề xuất: ' + r.tasks[0] + '.';
+  document.getElementById('panel').style.display = 'block';
+  controls.target.set(r.x, 0, r.z);
 }
-function toast(s){const t=document.getElementById('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2300)}
-renderer.domElement.addEventListener('pointerup',e=>{
- const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
- raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(clickable,false);
- if(hits.length){showRoom(hits[0].object.userData.room);}
+
+function toast(s) {
+  const t = document.getElementById('toast');
+  t.textContent = s;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2300);
+}
+
+renderer.domElement.addEventListener('pointerup', e => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(clickable, false);
+  if (hits.length) showRoom(hits[0].object.userData.room);
 });
-document.getElementById('taskBtn').onclick=()=>{if(!selected)return;const t=selected.tasks[Math.floor(Math.random()*selected.tasks.length)];document.getElementById('taskResult').textContent='Đã tạo nhiệm vụ demo: “'+t+'”. Đây mới là mô phỏng giao việc, chưa gọi AI bên ngoài.';};
-document.getElementById('closeBtn').onclick=()=>document.getElementById('panel').style.display='none';
-document.getElementById('homeBtn').onclick=()=>{controls.target.set(0,0,0);camera.position.set(10,11,14);document.getElementById('panel').style.display='none';};
-document.getElementById('rotateBtn').onclick=()=>{auto=!auto;controls.autoRotate=auto;controls.autoRotateSpeed=.8;document.getElementById('rotateBtn').textContent='⟳ Xoay tự động: '+(auto?'Bật':'Tắt');};
-document.getElementById('aboutBtn').onclick=()=>{toast('Bản V1 là mô hình 3D tương tác. AI Actions thật sẽ được tích hợp ở bước tiếp theo.');};
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}animate();
+
+document.getElementById('taskBtn').onclick = () => {
+  if (!selected) return;
+  const t = selected.tasks[Math.floor(Math.random() * selected.tasks.length)];
+  document.getElementById('taskResult').textContent = 'Đã tạo nhiệm vụ demo: “' + t + '”.';
+};
+
+document.getElementById('closeBtn').onclick = () => document.getElementById('panel').style.display = 'none';
+document.getElementById('homeBtn').onclick = () => {
+  controls.target.set(0, 0, 0);
+  camera.position.set(10, 11, 14);
+  document.getElementById('panel').style.display = 'none';
+};
+document.getElementById('rotateBtn').onclick = () => {
+  auto = !auto;
+  controls.autoRotate = auto;
+  controls.autoRotateSpeed = 0.8;
+  document.getElementById('rotateBtn').textContent = '⟳ Xoay tự động: ' + (auto ? 'Bật' : 'Tắt');
+};
+document.getElementById('aboutBtn').onclick = () => toast('Bản V1 là mô hình 3D tương tác. AI Actions thật sẽ được tích hợp ở bước tiếp theo.');
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
 </script>
 </body>
 </html>
