@@ -16,8 +16,9 @@
 .status{font-size:10px;color:#9de4bb;background:#102b28;border:1px solid #275d4c;padding:8px 10px;border-radius:99px}
 .hint{position:fixed;top:calc(env(safe-area-inset-top,12px) + 64px);left:12px;right:12px;text-align:center;color:#b8c8d9;font-size:11px;z-index:2;text-shadow:0 2px 5px #000;pointer-events:none}
 .bottom{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:12px;right:12px;display:flex;gap:8px;z-index:3}
-button{font:inherit;color:#eef5ff;background:#12263b;border:1px solid #34516e;border-radius:12px;padding:11px 13px;font-size:12px;min-height:42px}
+button{font:inherit;color:#eef5ff;background:#12263b;border:1px solid #34516e;border-radius:12px;padding:11px 13px;font-size:12px;min-height:42px;transition:all 0.2s}
 button:active{transform:scale(.98);background:#1b3854}
+button:disabled{opacity:0.6;cursor:not-allowed}
 .bottom button{flex:1}
 #panel{position:fixed;z-index:5;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 68px);background:#0c1a2af2;border:1px solid #3b5874;border-radius:18px;padding:16px;display:none;max-height:52vh;overflow:auto}
 #panel h2{font-size:18px;margin:0 0 6px;color:#e8c878}
@@ -37,10 +38,10 @@ button:active{transform:scale(.98);background:#1b3854}
  <h2 id="roomTitle">Phòng điều hành</h2>
  <p id="roomDesc"></p>
  <div class="actions">
-  <button id="taskBtn">Giao nhiệm vụ mẫu</button>
+  <button id="taskBtn">Giao nhiệm vụ mẫu (AI)</button>
   <button id="closeBtn">Đóng</button>
  </div>
- <p id="taskResult"></p>
+ <p id="taskResult" style="margin-top:12px; font-weight:bold;"></p>
 </div>
 <div class="bottom">
  <button id="homeBtn">⌂ Toàn cảnh</button>
@@ -60,6 +61,12 @@ button:active{transform:scale(.98);background:#1b3854}
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ==========================================
+// CẤU HÌNH API KEY GEMINI
+// BẠN DÁN KEY MỚI VÀO GIỮA 2 DẤU NHÁY ĐƠN DƯỚI ĐÂY:
+// ==========================================
+const GEMINI_API_KEY = 'DAN_KEY_MOI_CUA_BAN_VAO_DAY'; 
 
 const mount = document.getElementById('scene');
 const scene = new THREE.Scene();
@@ -192,11 +199,60 @@ renderer.domElement.addEventListener('pointerup', e => {
   if (hits.length) showRoom(hits[0].object.userData.room);
 });
 
-document.getElementById('taskBtn').onclick = () => {
+// ==========================================
+// SỰ KIỆN BẤM NÚT GIAO NHIỆM VỤ BẰNG AI
+// ==========================================
+document.getElementById('taskBtn').onclick = async () => {
   if (!selected) return;
-  const t = selected.tasks[Math.floor(Math.random() * selected.tasks.length)];
-  document.getElementById('taskResult').textContent = 'Đã tạo nhiệm vụ demo: “' + t + '”.';
+  
+  const taskBtn = document.getElementById('taskBtn');
+  const taskResult = document.getElementById('taskResult');
+  const originalBtnText = taskBtn.textContent;
+
+  // Cập nhật giao diện chờ
+  taskBtn.disabled = true;
+  taskBtn.textContent = 'Đang giao việc...';
+  taskResult.textContent = '🤖 AI Agent đang suy nghĩ...';
+  taskResult.style.color = '#c4d2e0';
+
+  // Tạo câu lệnh dựa vào phòng đang chọn
+  const prompt = `Bạn là trưởng phòng "${selected.vn}" của công ty BINZ ONE.
+Mô tả phòng: ${selected.desc}.
+Nhiệm vụ của bạn là giao việc cho nhân viên. Hãy đề xuất 1 công việc cụ thể, thực tế, ngắn gọn (dưới 30 chữ). Chỉ trả về duy nhất nội dung công việc, không giải thích dài dòng.`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    const data = await response.json();
+
+    // Xử lý kết quả
+    if (data.candidates && data.candidates[0].content) {
+      const aiText = data.candidates[0].content.parts[0].text;
+      taskResult.innerHTML = `✅ AI giao việc: <br><span style="color:#e8c878">"${aiText}"</span>`;
+      taskResult.style.color = '#eef5ff';
+      toast('Đã tạo nhiệm vụ thành công!');
+    } else {
+      taskResult.textContent = 'Lỗi: Không lấy được phản hồi. Hãy kiểm tra lại API Key.';
+      taskResult.style.color = '#ff7b7b';
+      console.error("Lỗi API:", data);
+    }
+  } catch (error) {
+    taskResult.textContent = 'Lỗi kết nối đến Google API!';
+    taskResult.style.color = '#ff7b7b';
+    console.error(error);
+  } finally {
+    // Trả lại trạng thái nút bấm bình thường
+    taskBtn.disabled = false;
+    taskBtn.textContent = originalBtnText;
+  }
 };
+
 document.getElementById('closeBtn').onclick = () => document.getElementById('panel').style.display = 'none';
 document.getElementById('homeBtn').onclick = () => {
   controls.target.set(0, 0, 0);
@@ -209,7 +265,7 @@ document.getElementById('rotateBtn').onclick = () => {
   controls.autoRotateSpeed = 0.8;
   document.getElementById('rotateBtn').textContent = '⟳ Xoay tự động: ' + (auto ? 'Bật' : 'Tắt');
 };
-document.getElementById('aboutBtn').onclick = () => toast('Bản V1 là mô hình 3D tương tác. AI Actions thật sẽ được tích hợp ở bước tiếp theo.');
+document.getElementById('aboutBtn').onclick = () => toast('Bản V1 là mô hình 3D tương tác. AI Actions thật đã được tích hợp!');
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
