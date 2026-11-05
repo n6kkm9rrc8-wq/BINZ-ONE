@@ -1,9 +1,203 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#081321">
+<title>BINZ ONE — Virtual 3D Office V1</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081321;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eef5ff}
+#scene{position:fixed;inset:0}
+.top{position:fixed;top:env(safe-area-inset-top,12px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;z-index:3;pointer-events:none}
+.brand{background:#0c1b2ddd;border:1px solid #29425b;border-radius:14px;padding:10px 13px}
+.brand b{letter-spacing:1.5px;color:#e8c878;font-size:13px}
+.brand small{display:block;color:#9fb2c7;font-size:10px;margin-top:3px}
+.status{font-size:10px;color:#9de4bb;background:#102b28;border:1px solid #275d4c;padding:8px 10px;border-radius:99px}
+.hint{position:fixed;top:calc(env(safe-area-inset-top,12px) + 64px);left:12px;right:12px;text-align:center;color:#b8c8d9;font-size:11px;z-index:2;text-shadow:0 2px 5px #000;pointer-events:none}
+.bottom{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:12px;right:12px;display:flex;gap:8px;z-index:3}
+button{font:inherit;color:#eef5ff;background:#12263b;border:1px solid #34516e;border-radius:12px;padding:11px 13px;font-size:12px;min-height:42px;transition:all 0.2s}
+button:active{transform:scale(.98);background:#1b3854}
+button:disabled{opacity:0.6;cursor:not-allowed}
+.bottom button{flex:1}
+#panel{position:fixed;z-index:5;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 68px);background:#0c1a2af2;border:1px solid #3b5874;border-radius:18px;padding:16px;display:none;max-height:52vh;overflow:auto}
+#panel h2{font-size:18px;margin:0 0 6px;color:#e8c878}
+#panel p{font-size:13px;line-height:1.5;color:#c4d2e0;margin:6px 0 12px}
+.actions{display:flex;gap:8px}.actions button{flex:1}
+#toast{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 72px);background:#24364a;padding:9px 13px;border-radius:20px;font-size:11px;display:none}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="top">
+ <div class="brand"><b>BINZ ONE</b><small>VIRTUAL HEADQUARTERS · V1</small></div>
+ <div class="status">● LOCAL DEMO</div>
+</div>
+<div class="hint">Chạm vào một phòng để xem nhiệm vụ · Kéo để xoay · Chụm để thu phóng</div>
+<div id="panel">
+ <h2 id="roomTitle">Phòng điều hành</h2>
+ <p id="roomDesc"></p>
+ <div class="actions">
+  <button id="taskBtn">Giao nhiệm vụ mẫu (AI)</button>
+  <button id="closeBtn">Đóng</button>
+ </div>
+ <p id="taskResult" style="margin-top:12px; font-weight:bold;"></p>
+</div>
+<div class="bottom">
+ <button id="homeBtn">⌂ Toàn cảnh</button>
+ <button id="rotateBtn">⟳ Xoay tự động: Tắt</button>
+ <button id="aboutBtn">ⓘ Hướng dẫn</button>
+</div>
+<div id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 // ==========================================
 // CẤU HÌNH API KEY GEMINI
+// BẠN DÁN KEY CỦA BẠN VÀO GIỮA 2 DẤU NHÁY ĐƠN DƯỚI ĐÂY:
 // ==========================================
-const GEMINI_API_KEY = 'DAN_API_KEY_MOI_CUA_BAN_VAO_DAY'; 
+const GEMINI_API_KEY = 'DAN_API_KEY_CUA_BAN_VAO_DAY'; 
 
-// ... (Giữ nguyên phần code Three.js khởi tạo 3D phía trên) ...
+const mount = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x081321);
+scene.fog = new THREE.Fog(0x081321, 18, 36);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(10, 11, 14);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+mount.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 7;
+controls.maxDistance = 25;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.HemisphereLight(0x9dbce0, 0x152235, 2));
+const key = new THREE.DirectionalLight(0xffe4b0, 3);
+key.position.set(7, 12, 8);
+key.castShadow = true;
+scene.add(key);
+const fill = new THREE.PointLight(0x3d91d8, 30, 25);
+fill.position.set(-7, 6, -5);
+scene.add(fill);
+
+const floor = new THREE.Mesh(
+  new THREE.BoxGeometry(13, 0.35, 9),
+  new THREE.MeshStandardMaterial({ color: 0x17283b, roughness: 0.8 })
+);
+floor.position.y = -0.3;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(13, 26, 0x36516c, 0x24394e);
+grid.position.y = -0.115;
+scene.add(grid);
+
+const roomDefs = [
+  {id:'hq', name:'HEADQUARTERS', vn:'Phòng điều hành', x:0, z:0, w:3.7, d:2.8, color:0xd8b75f, desc:'Trung tâm chỉ huy BINZ ONE. Điều phối công việc, theo dõi trạng thái các phòng và nhận báo cáo từ các AI Agent.', tasks:['Tổng hợp báo cáo các phòng','Kiểm tra tiến độ công việc','Phân công nhiệm vụ cho Agent']},
+  {id:'finance', name:'FINANCE', vn:'Phòng tài chính', x:-4.3, z:-2.65, w:3.6, d:2.7, color:0x53b9ad, desc:'Theo dõi dòng tiền, doanh thu, chi phí, công nợ và phân tích danh mục đầu tư.', tasks:['Lập báo cáo thu chi tháng','Theo dõi công nợ và lịch trả nợ','Phân tích mã cổ phiếu']},
+  {id:'business', name:'BUSINESS', vn:'Phòng kinh doanh', x:4.3, z:-2.65, w:3.6, d:2.7, color:0x6e9ee8, desc:'Quản lý hoạt động Tiệm tóc Binz: doanh thu, lịch dịch vụ, menu, marketing.', tasks:['Tổng kết doanh thu hôm nay','Đề xuất chương trình combo','Soạn nội dung quảng bá']},
+  {id:'dev', name:'DEVELOPER', vn:'Phòng lập trình', x:-4.3, z:2.65, w:3.6, d:2.7, color:0xb58be8, desc:'Phát triển ứng dụng BINZ ONE, quản lý mã nguồn, kiểm thử, sửa lỗi.', tasks:['Kiểm tra lỗi giao diện iPhone','Đề xuất nâng cấp phiên bản','Lập kế hoạch sao lưu']},
+  {id:'research', name:'RESEARCH', vn:'Phòng nghiên cứu', x:4.3, z:2.65, w:3.6, d:2.7, color:0xe28b70, desc:'Nghiên cứu công nghệ, tổng hợp tài liệu và đề xuất cải tiến.', tasks:['Nghiên cứu một công nghệ mới','Tóm tắt tài liệu','Đề xuất cải tiến BINZ ONE']}
+];
+
+const clickable = [];
+function addRoom(r) {
+  const group = new THREE.Group();
+  group.position.set(r.x, 0, r.z);
+  scene.add(group);
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(r.w, 0.13, r.d),
+    new THREE.MeshStandardMaterial({ color: 0x20364b, metalness: 0.3, roughness: 0.6 })
+  );
+  base.position.y = -0.06;
+  group.add(base);
+
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x34516a, transparent: true, opacity: 0.68 });
+  const h = 1.45, t = 0.10;
+  [[r.w, h, t, 0, h/2, -r.d/2], [r.w, h, t, 0, h/2, r.d/2], [t, h, r.d, -r.w/2, h/2, 0], [t, h, r.d, r.w/2, h/2, 0]].forEach(a => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(a[0], a[1], a[2]), wallMat);
+    m.position.set(a[3], a[4], a[5]);
+    group.add(m);
+    clickable.push(m);
+    m.userData.room = r;
+  });
+
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(r.w, 0.09, r.d),
+    new THREE.MeshStandardMaterial({ color: r.color, emissive: r.color, emissiveIntensity: 0.28 })
+  );
+  top.position.y = h;
+  group.add(top);
+  clickable.push(top);
+  top.userData.room = r;
+
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 0.48), new THREE.MeshStandardMaterial({ color: 0x9c7548, roughness: 0.55 }));
+  desk.position.set(0, 0.55, 0);
+  group.add(desk);
+
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.38, 0.06), new THREE.MeshStandardMaterial({ color: 0x112b42, emissive: 0x1b75a5, emissiveIntensity: 0.8 }));
+  screen.position.set(0, 0.83, -0.12);
+  group.add(screen);
+
+  const light = new THREE.PointLight(r.color, 5, 5);
+  light.position.set(r.x, 1.6, r.z);
+  scene.add(light);
+}
+roomDefs.forEach(addRoom);
+
+const centerRing = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.035, 8, 80), new THREE.MeshBasicMaterial({ color: 0xe8c878 }));
+centerRing.rotation.x = Math.PI / 2;
+centerRing.position.y = 0.02;
+scene.add(centerRing);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let selected = null, auto = false;
+
+function showRoom(r) {
+  selected = r;
+  document.getElementById('roomTitle').textContent = r.vn;
+  document.getElementById('roomDesc').textContent = r.desc;
+  document.getElementById('taskResult').textContent = 'AI Agent đề xuất: ' + r.tasks[0] + '.';
+  document.getElementById('panel').style.display = 'block';
+  controls.target.set(r.x, 0, r.z);
+}
+
+function toast(s) {
+  const t = document.getElementById('toast');
+  t.textContent = s;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2300);
+}
+
+renderer.domElement.addEventListener('pointerup', e => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(clickable, false);
+  if (hits.length) showRoom(hits[0].object.userData.room);
+});
 
 // ==========================================
 // SỰ KIỆN BẤM NÚT GIAO NHIỆM VỤ BẰNG AI
@@ -15,7 +209,6 @@ document.getElementById('taskBtn').onclick = async () => {
   const taskResult = document.getElementById('taskResult');
   const originalBtnText = taskBtn.textContent;
 
-  // Cập nhật giao diện chờ
   taskBtn.disabled = true;
   taskBtn.textContent = 'Đang giao việc...';
   taskResult.textContent = '🤖 AI Agent đang suy nghĩ...';
@@ -29,12 +222,12 @@ Nhiệm vụ của bạn là giao việc cho nhân viên. Hãy đề xuất 1 c�
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
-    // SỬA LẠI URL: Bỏ ?key= ra khỏi URL
+    // SỬA LẠI URL: Bỏ ?key= ra khỏi URL, chuyển vào Header
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY // Thêm API Key vào Header theo chuẩn mới
+        'x-goog-api-key': GEMINI_API_KEY 
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }]
@@ -70,3 +263,33 @@ Nhiệm vụ của bạn là giao việc cho nhân viên. Hãy đề xuất 1 c�
     taskBtn.textContent = originalBtnText;
   }
 };
+
+document.getElementById('closeBtn').onclick = () => document.getElementById('panel').style.display = 'none';
+document.getElementById('homeBtn').onclick = () => {
+  controls.target.set(0, 0, 0);
+  camera.position.set(10, 11, 14);
+  document.getElementById('panel').style.display = 'none';
+};
+document.getElementById('rotateBtn').onclick = () => {
+  auto = !auto;
+  controls.autoRotate = auto;
+  controls.autoRotateSpeed = 0.8;
+  document.getElementById('rotateBtn').textContent = '⟳ Xoay tự động: ' + (auto ? 'Bật' : 'Tắt');
+};
+document.getElementById('aboutBtn').onclick = () => toast('Bản V1 là mô hình 3D tương tác. AI Actions thật đã được tích hợp!');
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
