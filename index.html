@@ -64,9 +64,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ==========================================
 // CẤU HÌNH API KEY GEMINI
-// BẠN DÁN KEY MỚI VÀO GIỮA 2 DẤU NHÁY ĐƠN DƯỚI ĐÂY:
+// BẠN DÁN KEY CỦA BẠN VÀO GIỮA 2 DẤU NHÁY ĐƠN DƯỚI ĐÂY:
 // ==========================================
-const GEMINI_API_KEY = 'DAN_KEY_MOI_CUA_BAN_VAO_DAY'; 
+const GEMINI_API_KEY = 'DAN_KEY_CUA_BAN_VAO_DAY'; 
 
 const mount = document.getElementById('scene');
 const scene = new THREE.Scene();
@@ -215,10 +215,13 @@ document.getElementById('taskBtn').onclick = async () => {
   taskResult.textContent = '🤖 AI Agent đang suy nghĩ...';
   taskResult.style.color = '#c4d2e0';
 
-  // Tạo câu lệnh dựa vào phòng đang chọn
   const prompt = `Bạn là trưởng phòng "${selected.vn}" của công ty BINZ ONE.
 Mô tả phòng: ${selected.desc}.
 Nhiệm vụ của bạn là giao việc cho nhân viên. Hãy đề xuất 1 công việc cụ thể, thực tế, ngắn gọn (dưới 30 chữ). Chỉ trả về duy nhất nội dung công việc, không giải thích dài dòng.`;
+
+  // Đặt thời gian chờ tối đa 10 giây để tránh bị treo
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -226,28 +229,37 @@ Nhiệm vụ của bạn là giao việc cho nhân viên. Hãy đề xuất 1 c�
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }]
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     const data = await response.json();
 
-    // Xử lý kết quả
+    // Nếu Google trả về lỗi (sai key, block...)
+    if (!response.ok) {
+        throw new Error(data.error?.message || "Lỗi kết nối từ Google");
+    }
+
+    // Xử lý kết quả thành công
     if (data.candidates && data.candidates[0].content) {
       const aiText = data.candidates[0].content.parts[0].text;
       taskResult.innerHTML = `✅ AI giao việc: <br><span style="color:#e8c878">"${aiText}"</span>`;
       taskResult.style.color = '#eef5ff';
       toast('Đã tạo nhiệm vụ thành công!');
     } else {
-      taskResult.textContent = 'Lỗi: Không lấy được phản hồi. Hãy kiểm tra lại API Key.';
-      taskResult.style.color = '#ff7b7b';
-      console.error("Lỗi API:", data);
+      throw new Error("Không lấy được dữ liệu.");
     }
   } catch (error) {
-    taskResult.textContent = 'Lỗi kết nối đến Google API!';
+    // Hiển thị lỗi ra màn hình cho bạn biết
+    if (error.name === 'AbortError') {
+        taskResult.textContent = '❌ Lỗi: Quá thời gian chờ (Mạng yếu hoặc Key sai).';
+    } else {
+        taskResult.textContent = '❌ Lỗi: ' + error.message;
+    }
     taskResult.style.color = '#ff7b7b';
     console.error(error);
   } finally {
-    // Trả lại trạng thái nút bấm bình thường
     taskBtn.disabled = false;
     taskBtn.textContent = originalBtnText;
   }
